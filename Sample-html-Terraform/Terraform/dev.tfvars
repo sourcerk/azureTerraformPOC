@@ -1,0 +1,5 @@
+location="eastus"
+rg-name="rg-staticweb"
+storage-account-name="myblogstaticweb"
+index_document="index.html"
+source_content="<h1>This is static content coming from the Terraform</h1>"

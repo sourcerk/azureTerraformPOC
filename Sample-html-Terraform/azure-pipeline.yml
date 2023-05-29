@@ -1,0 +1,54 @@
+trigger:
+  - main
+      
+pool:
+  vmImage: 'windows-latest'
+
+parameters:
+  - name: deployConfigMap
+    type: object
+    default:
+      - environment: dev
+        dependson: []
+        stagecondition: true
+
+  - name: tfStateFileBucketName
+    type: string
+    default: dftfstate
+  
+stages:
+  - ${{ each deployConfig in parameters.deployConfigMap }}:
+    - stage: ${{ deployConfig.environment }}
+      displayName: ${{ deployConfig.environment }}
+      dependsOn: ${{ deployConfig.dependsOn }}
+      condition: ${{ deployConfig.stageCondition }}
+      #variables:
+      #  - group: Akamai-${{ deployConfig.environment }}
+      jobs:
+      - deployment: ${{ deployConfig.environment }}
+        environment: Akamai-${{ deployConfig.environment }}
+
+      - job: 'TerraformPlan'
+        displayName: 'Terraform Plan'
+        steps:
+          - script: echo "Run the terraform plan"
+      
+          - task: ms-devlabs.custom-terraform-tasks.custom-terraform-installer-task.TerraformInstaller@0
+            displayName: 'Install Terraform'
+            inputs:
+              terraformVersion: 'v1.2.7'
+
+          - task: AzureCLI@2
+            inputs:
+              displayName: Terraform Apply
+              azureSubscription: "AzurePipelineConnection"
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                export ARM_ACCESS_KEY="USE YOUR ACCOUNT ARM ACCESS KEY"
+                cd Terraform
+                terraform init
+                terraform plan -var-file="dev.tfvars"
+                terraform apply -var-file="dev.tfvars" -auto-approve
+
+          
